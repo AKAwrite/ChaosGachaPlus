@@ -12,8 +12,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "seed": "prisma db seed",
+    "sync:entries": "tsx --env-file-if-exists=.env scripts/syncUpstream.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.seed.json"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.scripts.json"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

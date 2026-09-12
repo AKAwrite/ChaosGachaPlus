@@ -6,5 +6,5 @@
     "moduleResolution": "NodeNext",
     "types": ["node"]
   },
-  "include": ["prisma"]
+  "include": ["prisma", "scripts"]
 }

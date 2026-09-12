@@ -12,6 +12,12 @@ const credentialsSchema = z.object({
 const COOKIE_NAME = "token";
 const COOKIE_MAX_AGE_SECONDS = 14 * 24 * 60 * 60;
 
+// In local dev the web app is proxied under the same origin, so "lax" is
+// enough. In production the frontend and API are on different domains, which
+// requires "none" (and, per spec, "none" is only honored when Secure is set -
+// hence tying this to COOKIE_SECURE rather than NODE_ENV directly).
+const COOKIE_SAME_SITE = env.COOKIE_SECURE ? "none" : "lax";
+
 export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/register", async (request, reply) => {
     const parsed = credentialsSchema.safeParse(request.body);
@@ -35,7 +41,7 @@ export async function authRoutes(app: FastifyInstance) {
       .setCookie(COOKIE_NAME, token, {
         httpOnly: true,
         secure: env.COOKIE_SECURE,
-        sameSite: "lax",
+        sameSite: COOKIE_SAME_SITE,
         path: "/",
         maxAge: COOKIE_MAX_AGE_SECONDS,
       })
@@ -60,7 +66,7 @@ export async function authRoutes(app: FastifyInstance) {
       .setCookie(COOKIE_NAME, token, {
         httpOnly: true,
         secure: env.COOKIE_SECURE,
-        sameSite: "lax",
+        sameSite: COOKIE_SAME_SITE,
         path: "/",
         maxAge: COOKIE_MAX_AGE_SECONDS,
       })

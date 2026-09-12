@@ -1,0 +1,264 @@
+// ChaosGachaPlus data model.
+// See C:\Users\arthur\.claude\plans\async-watching-sifakis.md for the design rationale.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EntryCategory {
+  ability
+  item
+  familiar
+  trait
+  skill
+}
+
+enum TicketCategory {
+  ability
+  item
+  familiar
+  trait
+  skill
+  random
+}
+
+enum RarityPreset {
+  Bronze
+  Silver
+  Gold
+  Platinum
+  Diamond
+  Legendary
+  Mythical
+  Divine
+}
+
+enum HistoryEventType {
+  TICKET_EARNED
+  TICKET_USED
+  PULL_RESULT
+  ITEM_RECEIVED
+  ITEM_TRANSFERRED_OUT
+  ITEM_TRANSFERRED_IN
+  ENTRY_EXCLUDED
+  ENTRY_INCLUDED
+  ENTRY_CUSTOMIZED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  stories         Story[]
+  customizations  GachaEntryCustomization[]
+}
+
+model Story {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  createdAt DateTime @default(now())
+
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characters     Character[]
+  customizations GachaEntryCustomization[]
+  historyEvents  HistoryEvent[]
+
+  @@index([userId])
+}
+
+model Character {
+  id        String   @id @default(uuid())
+  storyId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  story         Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  tickets       Ticket[]
+  inventory     InventoryItem[] @relation("CurrentOwner")
+  historyEvents HistoryEvent[]
+
+  @@index([storyId])
+}
+
+model GachaEntry {
+  id          String        @id @default(uuid())
+  category    EntryCategory
+  sourceIndex Int
+  name        String
+  rarity      Decimal       @db.Decimal(3, 1)
+  description String
+  isNsfw      Boolean       @default(false)
+  isCharacter Boolean       @default(false)
+  isTech      Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  customizations GachaEntryCustomization[]
+  pullProposals  PullProposal[]
+  pulls          Pull[]
+
+  @@unique([category, sourceIndex])
+  @@index([category, rarity])
+}
+
+model Ticket {
+  id          String         @id @default(uuid())
+  characterId String
+  feat        String
+  category    TicketCategory
+  presetName  RarityPreset?
+  minRarity   Decimal        @db.Decimal(3, 1)
+  avgRarity   Decimal        @db.Decimal(3, 1)
+  maxRarity   Decimal        @db.Decimal(3, 1)
+  isAdvantage Boolean        @default(false)
+  earnedAt    DateTime       @default(now())
+  usedAt      DateTime?
+  createdAt   DateTime       @default(now())
+
+  character     Character      @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  proposals     PullProposal[]
+  pull          Pull?
+  historyEvents HistoryEvent[]
+
+  @@index([characterId, usedAt])
+}
+
+// Ephemeral, pre-confirmation roll result(s) for a ticket. One row for a normal
+// ticket, two (optionIndex 0/1) for an advantage ticket. Cleared on reroll or commit.
+model PullProposal {
+  id          String   @id @default(uuid())
+  ticketId    String
+  optionIndex Int      @default(0)
+
+  gachaEntryId    String?
+  customizationId String?
+
+  resolvedCategory    EntryCategory
+  resolvedName        String
+  resolvedRarity      Decimal       @db.Decimal(3, 1)
+  resolvedDescription String
+  tier                String
+  color               String
+  luckPercent         Decimal       @db.Decimal(6, 3)
+  createdAt           DateTime      @default(now())
+
+  ticket        Ticket                   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  gachaEntry    GachaEntry?              @relation(fields: [gachaEntryId], references: [id])
+  customization GachaEntryCustomization? @relation(fields: [customizationId], references: [id])
+
+  @@unique([ticketId, optionIndex])
+}
+
+// Confirmed roll result - the real, persisted history. Denormalized so a later
+// edit to a custom entry never rewrites what history says was actually rolled.
+model Pull {
+  id                String   @id @default(uuid())
+  ticketId          String   @unique
+  chosenOptionIndex Int      @default(0)
+
+  gachaEntryId    String?
+  customizationId String?
+
+  category    EntryCategory
+  name        String
+  rarity      Decimal       @db.Decimal(3, 1)
+  description String
+  tier        String
+  luckPercent Decimal       @db.Decimal(6, 3)
+  rolledAt    DateTime      @default(now())
+
+  ticket         Ticket                   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  gachaEntry     GachaEntry?              @relation(fields: [gachaEntryId], references: [id])
+  customization  GachaEntryCustomization? @relation(fields: [customizationId], references: [id])
+  inventoryItems InventoryItem[]
+  historyEvents  HistoryEvent[]
+}
+
+model InventoryItem {
+  id            String   @id @default(uuid())
+  characterId   String
+  sourcePullId  String
+  name          String
+  description   String
+  rarity        Decimal  @db.Decimal(3, 1)
+  acquiredAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  character     Character      @relation("CurrentOwner", fields: [characterId], references: [id], onDelete: Cascade)
+  sourcePull    Pull           @relation(fields: [sourcePullId], references: [id])
+  transfers     ItemTransfer[]
+  historyEvents HistoryEvent[]
+
+  @@index([characterId])
+}
+
+model ItemTransfer {
+  id               String   @id @default(uuid())
+  itemId           String
+  fromCharacterId  String
+  toCharacterId    String
+  transferredAt    DateTime @default(now())
+
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+// Private, per-user override on top of the shared GachaEntry pool: a wholly
+// custom entry (baseEntryId null), an edit of an official entry's display
+// values (baseEntryId set), and/or an exclusion from the roll pool.
+model GachaEntryCustomization {
+  id           String        @id @default(uuid())
+  userId       String
+  storyId      String?
+  baseEntryId  String?
+  category     EntryCategory
+  name         String?
+  rarity       Decimal?      @db.Decimal(3, 1)
+  description  String?
+  isExcluded   Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story         Story?         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  baseEntry     GachaEntry?    @relation(fields: [baseEntryId], references: [id], onDelete: Cascade)
+  pullProposals PullProposal[]
+  pulls         Pull[]
+  historyEvents HistoryEvent[]
+
+  @@index([userId, storyId])
+  @@index([baseEntryId])
+}
+
+model HistoryEvent {
+  id          String           @id @default(uuid())
+  characterId String
+  storyId     String
+  type        HistoryEventType
+  summary     String
+  metadata    Json?
+  occurredAt  DateTime         @default(now())
+
+  ticketId        String?
+  pullId          String?
+  itemId          String?
+  customizationId String?
+
+  character     Character                @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  story         Story                    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  ticket        Ticket?                  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  pull          Pull?                    @relation(fields: [pullId], references: [id], onDelete: SetNull)
+  item          InventoryItem?           @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  customization GachaEntryCustomization? @relation(fields: [customizationId], references: [id], onDelete: SetNull)
+
+  @@index([characterId, occurredAt])
+  @@index([storyId, occurredAt])
+}

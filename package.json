@@ -1,0 +1,18 @@
+{
+  "name": "chaos-gacha-plus",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A community-driven expansion of Bronzdeck's Chaos Gacha, rebuilt as a responsive web app.",
+  "license": "GPL-3.0-only",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:web": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}

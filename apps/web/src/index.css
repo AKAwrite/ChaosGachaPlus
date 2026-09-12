@@ -199,3 +199,174 @@ button.danger {
   align-items: center;
   gap: 0.5rem;
 }
+
+nav a {
+  color: var(--color-text-muted);
+}
+
+/* --- Roll session / pull cards --- */
+
+.roll-session {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+}
+
+.roll-session__ticket {
+  margin-bottom: 1.5rem;
+}
+
+.roll-session__feat {
+  color: var(--color-text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.roll-session__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.roll-session__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+@keyframes pull-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotateY(90deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotateY(0deg);
+  }
+}
+
+@keyframes pull-flourish-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 8px 0 var(--tier-color);
+  }
+  50% {
+    box-shadow: 0 0 24px 6px var(--tier-color);
+  }
+}
+
+.pull-card {
+  --tier-color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 220px;
+  text-align: left;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid var(--tier-color);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: default;
+  animation: pull-reveal 0.5s ease-out;
+}
+
+.pull-card:disabled {
+  opacity: 1;
+}
+
+.pull-card--selected {
+  outline: 3px solid var(--color-accent);
+}
+
+.pull-card--flourish {
+  animation:
+    pull-reveal 0.6s ease-out,
+    pull-flourish-glow 1.6s ease-in-out 0.6s infinite;
+}
+
+.pull-card__tier {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tier-color);
+  font-weight: 700;
+}
+
+.pull-card__name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.pull-card__meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.pull-card__description {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* --- Inventory / entries / history --- */
+
+.transfer-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.transfer-controls select {
+  padding: 0.35rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.entry-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.entry-row__main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.override-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.override-form input,
+.override-form textarea {
+  padding: 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.history-list li {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.history-list__type {
+  font-weight: 700;
+  margin-right: 0.35rem;
+}
+
+.history-list time {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}

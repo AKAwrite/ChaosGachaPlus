@@ -8,6 +8,10 @@ import { authRoutes } from "./routes/auth.js";
 import { storyRoutes } from "./routes/stories.js";
 import { characterRoutes } from "./routes/characters.js";
 import { ticketRoutes } from "./routes/tickets.js";
+import { pullRoutes } from "./routes/pulls.js";
+import { inventoryRoutes } from "./routes/inventory.js";
+import { entryRoutes } from "./routes/entries.js";
+import { historyRoutes } from "./routes/history.js";
 
 const app = Fastify({ logger: true });
 
@@ -32,6 +36,10 @@ await app.register(authRoutes);
 await app.register(storyRoutes);
 await app.register(characterRoutes);
 await app.register(ticketRoutes);
+await app.register(pullRoutes);
+await app.register(inventoryRoutes);
+await app.register(entryRoutes);
+await app.register(historyRoutes);
 
 app
   .listen({ port: env.PORT, host: "0.0.0.0" })

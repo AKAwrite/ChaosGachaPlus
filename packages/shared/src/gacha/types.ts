@@ -1,4 +1,4 @@
-import type { GachaCategory } from "../types/domain.js";
+import type { ConcreteGachaCategory } from "../types/domain.js";
 
 export interface PoolEntry {
   /** id of the underlying GachaEntry or GachaEntryCustomization row, for traceability */
@@ -6,7 +6,8 @@ export interface PoolEntry {
   source: "official" | "custom";
   gachaEntryId?: string;
   customizationId?: string;
-  category: GachaCategory;
+  /** Always concrete - "random" tickets resolve to one of these before the pool is built. */
+  category: ConcreteGachaCategory;
   name: string;
   rarity: number;
   description: string;

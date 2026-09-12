@@ -22,6 +22,7 @@ export function StoriesPage() {
       <header className="app-header">
         <h1>Your stories</h1>
         <div>
+          <Link to="/entries">Entries</Link>
           <span>{user?.email}</span>
           <button type="button" onClick={() => logout()}>
             Log out

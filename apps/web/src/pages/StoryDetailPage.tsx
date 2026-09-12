@@ -25,6 +25,11 @@ export function StoryDetailPage() {
           <Link to="/stories">&larr; Your stories</Link>
           <h1>{story?.title ?? "..."}</h1>
         </div>
+        <nav>
+          <Link to={`/stories/${storyId}/history`}>History</Link>
+          {" · "}
+          <Link to={`/stories/${storyId}/entries`}>Entries</Link>
+        </nav>
       </header>
 
       <h2>Characters</h2>

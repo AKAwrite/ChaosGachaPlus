@@ -19,6 +19,9 @@ const TIER_TABLE: Array<{ upperBound: number; tier: Tier }> = [
 
 const TRANSCENDENT: Tier = { name: "Transcendent", color: "#ff0000" };
 
+/** Trash -> Transcendent, weakest to strongest - useful for comparing tiers by name. */
+export const TIER_ORDER = [...TIER_TABLE.map((t) => t.tier.name), TRANSCENDENT.name];
+
 export function tierForRarity(rarity: number): Tier {
   for (const { upperBound, tier } of TIER_TABLE) {
     if (rarity < upperBound) {
@@ -26,4 +29,9 @@ export function tierForRarity(rarity: number): Tier {
     }
   }
   return TRANSCENDENT;
+}
+
+/** True for Epic and above - the pulls worth an extra flourish in the UI. */
+export function isHighTier(tierName: string): boolean {
+  return TIER_ORDER.indexOf(tierName) >= TIER_ORDER.indexOf("Epic");
 }

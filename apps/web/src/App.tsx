@@ -6,6 +6,8 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { StoriesPage } from "./pages/StoriesPage";
 import { StoryDetailPage } from "./pages/StoryDetailPage";
 import { CharacterDetailPage } from "./pages/CharacterDetailPage";
+import { StoryHistoryPage } from "./pages/StoryHistoryPage";
+import { EntriesPage } from "./pages/EntriesPage";
 
 export function App() {
   return (
@@ -35,6 +37,30 @@ export function App() {
           element={
             <ProtectedRoute>
               <CharacterDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stories/:storyId/history"
+          element={
+            <ProtectedRoute>
+              <StoryHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stories/:storyId/entries"
+          element={
+            <ProtectedRoute>
+              <EntriesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/entries"
+          element={
+            <ProtectedRoute>
+              <EntriesPage />
             </ProtectedRoute>
           }
         />

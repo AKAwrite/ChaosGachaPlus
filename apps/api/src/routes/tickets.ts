@@ -3,6 +3,7 @@ import { z } from "zod";
 import { RARITY_PRESETS, RARITY_PRESET_RANGES, GACHA_CATEGORIES } from "@chaosgachaplus/shared";
 import { requireAuth, getAuthUserId } from "../middleware/requireAuth.js";
 import { findOwnedCharacter } from "../lib/ownership.js";
+import { logHistoryEvent } from "../lib/historyLog.js";
 import type { Ticket } from "../../generated/client/index.js";
 
 const baseTicketFields = {
@@ -77,6 +78,13 @@ export async function ticketRoutes(app: FastifyInstance) {
           avgRarity: avg,
           maxRarity: max,
         },
+      });
+      await logHistoryEvent(app.prisma, {
+        characterId: character.id,
+        storyId: request.params.storyId,
+        type: "TICKET_EARNED",
+        summary: `Earned a ${presetName ?? `${min}-${avg}-${max}`} ${data.category} ticket: ${data.feat}`,
+        ticketId: ticket.id,
       });
       reply.code(201).send(toTicketDTO(ticket));
     },

@@ -1,6 +1,10 @@
 export const GACHA_CATEGORIES = ["ability", "item", "familiar", "trait", "skill", "random"] as const;
 export type GachaCategory = (typeof GACHA_CATEGORIES)[number];
 
+/** The concrete categories a "random" ticket resolves to at roll time. */
+export const CONCRETE_GACHA_CATEGORIES = ["ability", "item", "familiar", "trait", "skill"] as const;
+export type ConcreteGachaCategory = (typeof CONCRETE_GACHA_CATEGORIES)[number];
+
 export const RARITY_PRESETS = [
   "Bronze",
   "Silver",

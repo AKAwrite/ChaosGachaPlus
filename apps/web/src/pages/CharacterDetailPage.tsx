@@ -1,16 +1,24 @@
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { GACHA_CATEGORIES, RARITY_PRESETS, type GachaCategory, type RarityPresetName } from "@chaosgachaplus/shared";
-import { useCharacter } from "../hooks/useCharacters";
+import { useCharacter, useCharacters } from "../hooks/useCharacters";
 import { useCreateTicket, useDeleteTicket, useTickets } from "../hooks/useTickets";
+import { usePulls } from "../hooks/useRolls";
+import { useCharacterHistory } from "../hooks/useHistory";
 import type { CreateTicketInput } from "../api/tickets";
+import { RollSession } from "../components/pull/RollSession";
+import { InventoryList } from "../components/inventory/InventoryList";
+import { HistoryTimeline } from "../components/history/HistoryTimeline";
 
 type RarityMode = "preset" | "custom";
 
 export function CharacterDetailPage() {
   const { storyId, characterId } = useParams<{ storyId: string; characterId: string }>();
   const { data: character } = useCharacter(storyId, characterId);
+  const { data: allCharacters } = useCharacters(storyId);
   const { data: tickets, isLoading } = useTickets(storyId!, characterId!);
+  const { data: pulls } = usePulls(storyId!, characterId!);
+  const { data: historyEvents } = useCharacterHistory(storyId!, characterId!);
   const createTicket = useCreateTicket(storyId!, characterId!);
   const deleteTicket = useDeleteTicket(storyId!, characterId!);
 
@@ -45,7 +53,7 @@ export function CharacterDetailPage() {
   }
 
   const unusedTickets = tickets?.filter((t) => !t.usedAt) ?? [];
-  const usedTickets = tickets?.filter((t) => t.usedAt) ?? [];
+  const otherCharacters = (allCharacters ?? []).filter((c) => c.id !== characterId);
 
   return (
     <main>
@@ -77,19 +85,11 @@ export function CharacterDetailPage() {
         <fieldset>
           <legend>Rarity</legend>
           <label>
-            <input
-              type="radio"
-              checked={rarityMode === "preset"}
-              onChange={() => setRarityMode("preset")}
-            />
+            <input type="radio" checked={rarityMode === "preset"} onChange={() => setRarityMode("preset")} />
             Preset
           </label>
           <label>
-            <input
-              type="radio"
-              checked={rarityMode === "custom"}
-              onChange={() => setRarityMode("custom")}
-            />
+            <input type="radio" checked={rarityMode === "custom"} onChange={() => setRarityMode("custom")} />
             Custom range
           </label>
 
@@ -131,34 +131,30 @@ export function CharacterDetailPage() {
 
       {isLoading && <p>Loading...</p>}
 
-      <h2>Unused tickets ({unusedTickets.length})</h2>
-      {unusedTickets.length === 0 && <p>No unused tickets.</p>}
+      <RollSession
+        storyId={storyId!}
+        characterId={characterId!}
+        tickets={unusedTickets}
+        onDone={() => undefined}
+        onDeleteTicket={(id) => deleteTicket.mutate(id)}
+      />
+
+      <InventoryList storyId={storyId!} characterId={characterId!} otherCharacters={otherCharacters} />
+
+      <h2>Pull history ({pulls?.length ?? 0})</h2>
       <ul className="entity-list">
-        {unusedTickets.map((ticket) => (
-          <li key={ticket.id}>
+        {pulls?.map((pull) => (
+          <li key={pull.id}>
             <span>
-              <strong>{ticket.category}</strong> — {ticket.feat}
-              {ticket.presetName ? ` (${ticket.presetName})` : ` (${ticket.minRarity}-${ticket.avgRarity}-${ticket.maxRarity})`}
-              {ticket.isAdvantage ? " ⚡ advantage" : ""}
+              <strong>{pull.tier}</strong> {pull.name} ({pull.category}) — from "{pull.ticketFeat}"
             </span>
-            <button type="button" className="danger" onClick={() => deleteTicket.mutate(ticket.id)}>
-              Delete
-            </button>
+            <span>{new Date(pull.rolledAt).toLocaleDateString()}</span>
           </li>
         ))}
       </ul>
 
-      <h2>Used tickets ({usedTickets.length})</h2>
-      {usedTickets.length === 0 && <p>No tickets used yet.</p>}
-      <ul className="entity-list">
-        {usedTickets.map((ticket) => (
-          <li key={ticket.id}>
-            <span>
-              <strong>{ticket.category}</strong> — {ticket.feat}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <h2>Character history</h2>
+      {historyEvents && <HistoryTimeline events={historyEvents} />}
     </main>
   );
 }

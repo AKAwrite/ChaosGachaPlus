@@ -1,9 +1,9 @@
-import type { GachaCategory } from "../types/domain.js";
+import type { ConcreteGachaCategory } from "../types/domain.js";
 import type { PoolEntry } from "./types.js";
 
 export interface OfficialEntryInput {
   id: string;
-  category: GachaCategory;
+  category: ConcreteGachaCategory;
   name: string;
   rarity: number;
   description: string;
@@ -18,7 +18,7 @@ export interface CustomizationInput {
   storyId: string | null;
   /** null = this customization IS a wholly custom entry, not an override */
   baseEntryId: string | null;
-  category: GachaCategory;
+  category: ConcreteGachaCategory;
   name: string | null;
   rarity: number | null;
   description: string | null;
@@ -32,7 +32,7 @@ export interface ContentFilters {
 }
 
 export interface ResolvePoolInput {
-  category: GachaCategory;
+  category: ConcreteGachaCategory;
   storyId: string | null;
   officialEntries: OfficialEntryInput[];
   /** All of the current user's customizations - filtered internally by category/story scope */

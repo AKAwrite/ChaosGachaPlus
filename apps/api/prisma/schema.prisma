@@ -240,7 +240,9 @@ model GachaEntryCustomization {
 
 model HistoryEvent {
   id          String           @id @default(uuid())
-  characterId String
+  // Nullable: some events (e.g. entry customization) are Story-scoped, not
+  // tied to one specific Character.
+  characterId String?
   storyId     String
   type        HistoryEventType
   summary     String
@@ -252,7 +254,7 @@ model HistoryEvent {
   itemId          String?
   customizationId String?
 
-  character     Character                @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character     Character?               @relation(fields: [characterId], references: [id], onDelete: Cascade)
   story         Story                    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   ticket        Ticket?                  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
   pull          Pull?                    @relation(fields: [pullId], references: [id], onDelete: SetNull)

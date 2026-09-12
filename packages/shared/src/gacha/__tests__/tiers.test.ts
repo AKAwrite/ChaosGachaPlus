@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tierForRarity } from "../tiers.js";
+import { isHighTier, tierForRarity } from "../tiers.js";
 
 describe("tierForRarity", () => {
   it.each([
@@ -17,5 +17,15 @@ describe("tierForRarity", () => {
     [10, "Transcendent"],
   ])("maps rarity %f to tier %s", (rarity, expected) => {
     expect(tierForRarity(rarity).name).toBe(expected);
+  });
+});
+
+describe("isHighTier", () => {
+  it.each(["Epic", "Legendary", "Mythical", "Divine", "Transcendent"])("%s is a high tier", (tier) => {
+    expect(isHighTier(tier)).toBe(true);
+  });
+
+  it.each(["Trash", "Common", "Uncommon", "Rare", "Elite"])("%s is not a high tier", (tier) => {
+    expect(isHighTier(tier)).toBe(false);
   });
 });

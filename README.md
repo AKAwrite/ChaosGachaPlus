@@ -8,7 +8,7 @@ This project is free, open source, and non-commercial. It exists purely to expan
 
 ## Credit
 
-All original gacha content (abilities, items, familiars, traits, skills and their rarities/descriptions) and the core rarity-weighting algorithm were created by **Bronzdeck** for the original [Chaos Gacha](https://github.com/Bronzdeck/ChaosGacha) ([Patreon](https://patreon.com/BronzDeck)). ChaosGachaPlus is an unofficial, derivative work, shared under the same license with Bronzdeck's blessing to modify and redistribute. Please support the original if you can.
+All original gacha content (abilities, items, familiars, traits, skills and their rarities/descriptions) and the core rarity-weighting algorithm were created by **Bronzdeck** for the original [Chaos Gacha](https://github.com/Bronzdeck/ChaosGacha) ([Patreon](https://patreon.com/BronzDeck)). ChaosGachaPlus is an unofficial, derivative work, shared under the same license. Please support the original if you can.
 
 ## Status
 

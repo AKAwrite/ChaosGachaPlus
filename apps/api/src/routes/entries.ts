@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { CONCRETE_GACHA_CATEGORIES } from "@chaosgachaplus/shared";
+import { CONCRETE_GACHA_CATEGORIES, bandForTierName } from "@chaosgachaplus/shared";
 import { requireAuth, getAuthUserId } from "../middleware/requireAuth.js";
 import { findOwnedStory } from "../lib/ownership.js";
 import { logHistoryEvent } from "../lib/historyLog.js";
@@ -9,7 +9,11 @@ import type { GachaEntry, GachaEntryCustomization } from "../../generated/client
 const listEntriesSchema = z.object({
   category: z.enum(CONCRETE_GACHA_CATEGORIES).optional(),
   search: z.string().trim().min(1).max(200).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  /** Comma-separated tier names; each one widens the result rather than narrowing it. */
+  tiers: z.string().trim().min(1).optional(),
+  sort: z.enum(["name", "rarity"]).default("name"),
+  dir: z.enum(["asc", "desc"]).default("asc"),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
 
@@ -50,18 +54,37 @@ export async function entryRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.flatten() });
     }
-    const { category, search, limit, offset } = parsed.data;
+    const { category, search, tiers, sort, dir, limit, offset } = parsed.data;
 
-    const entries = await app.prisma.gachaEntry.findMany({
-      where: {
-        ...(category ? { category } : {}),
-        ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
-      },
-      orderBy: { name: "asc" },
-      take: limit,
-      skip: offset,
-    });
-    reply.send(entries.map(toEntryDTO));
+    const bands = tiers
+      ?.split(",")
+      .map((name) => bandForTierName(name.trim()))
+      .filter((band): band is NonNullable<typeof band> => Boolean(band));
+
+    const where = {
+      ...(category ? { category } : {}),
+      ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+      ...(bands && bands.length > 0
+        ? {
+            OR: bands.map((band) => ({
+              rarity: { gte: band.min, ...(Number.isFinite(band.max) ? { lt: band.max } : {}) },
+            })),
+          }
+        : {}),
+    };
+
+    const [entries, total] = await Promise.all([
+      app.prisma.gachaEntry.findMany({
+        where,
+        // Rarity ties are common, so fall back to name for a stable order.
+        orderBy: sort === "rarity" ? [{ rarity: dir }, { name: "asc" }] : [{ name: dir }],
+        take: limit,
+        skip: offset,
+      }),
+      app.prisma.gachaEntry.count({ where }),
+    ]);
+
+    reply.send({ entries: entries.map(toEntryDTO), total });
   });
 
   app.get<{ Querystring: { storyId?: string } }>("/customizations", async (request, reply) => {

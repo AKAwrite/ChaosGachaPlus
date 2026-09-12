@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ConcreteGachaCategory } from "@chaosgachaplus/shared";
 import * as entriesApi from "../api/entries";
 import type { CreateCustomizationInput } from "../api/entries";
 
-export function useEntries(category: ConcreteGachaCategory | undefined, search: string) {
+export function useEntries(params: entriesApi.ListEntriesParams) {
   return useQuery({
-    queryKey: ["entries", category, search],
-    queryFn: () => entriesApi.listEntries({ category, search: search || undefined }),
+    queryKey: ["entries", params],
+    queryFn: () => entriesApi.listEntries(params),
+    placeholderData: (previous) => previous,
   });
 }
 

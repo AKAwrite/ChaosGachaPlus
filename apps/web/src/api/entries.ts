@@ -25,12 +25,30 @@ export interface CustomizationDTO {
   createdAt: string;
 }
 
-export function listEntries(params: { category?: ConcreteGachaCategory; search?: string }) {
+export interface ListEntriesParams {
+  category?: ConcreteGachaCategory;
+  search?: string;
+  tiers?: string[];
+  sort?: "name" | "rarity";
+  dir?: "asc" | "desc";
+  limit?: number;
+}
+
+export interface EntryListPage {
+  entries: GachaEntryDTO[];
+  total: number;
+}
+
+export function listEntries(params: ListEntriesParams) {
   const query = new URLSearchParams();
   if (params.category) query.set("category", params.category);
   if (params.search) query.set("search", params.search);
+  if (params.tiers?.length) query.set("tiers", params.tiers.join(","));
+  if (params.sort) query.set("sort", params.sort);
+  if (params.dir) query.set("dir", params.dir);
+  if (params.limit) query.set("limit", String(params.limit));
   const qs = query.toString();
-  return apiFetch<GachaEntryDTO[]>(`/entries${qs ? `?${qs}` : ""}`);
+  return apiFetch<EntryListPage>(`/entries${qs ? `?${qs}` : ""}`);
 }
 
 export function listCustomizations(storyId?: string) {

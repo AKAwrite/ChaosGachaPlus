@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CONCRETE_GACHA_CATEGORIES, type ConcreteGachaCategory } from "@chaosgachaplus/shared";
+import { CONCRETE_GACHA_CATEGORIES, TIER_BANDS, type ConcreteGachaCategory } from "@chaosgachaplus/shared";
 import { useStory } from "../hooks/useStories";
 import {
   useCreateCustomization,
@@ -64,7 +64,19 @@ export function EntriesPage() {
   const { data: story } = useStory(storyId);
   const [category, setCategory] = useState<ConcreteGachaCategory>("ability");
   const [search, setSearch] = useState("");
-  const { data: entries, isLoading } = useEntries(category, search);
+  const [tiers, setTiers] = useState<string[]>([]);
+  const [sortKey, setSortKey] = useState<"name-asc" | "name-desc" | "rarity-desc" | "rarity-asc">("name-asc");
+  const [limit, setLimit] = useState(50);
+  const [sort, dir] = sortKey.split("-") as ["name" | "rarity", "asc" | "desc"];
+  const { data: entryPage, isLoading } = useEntries({
+    category,
+    search: search || undefined,
+    tiers,
+    sort,
+    dir,
+    limit,
+  });
+  const entries = entryPage?.entries;
   const { data: customizations } = useCustomizations(storyId);
   const createCustomization = useCreateCustomization(storyId);
   const updateCustomization = useUpdateCustomization(storyId);
@@ -192,15 +204,74 @@ export function EntriesPage() {
 
         <section className="section">
           <h2>Official entries</h2>
-          <div className="inline-form">
-            <select value={category} onChange={(e) => setCategory(e.target.value as ConcreteGachaCategory)} style={{ maxWidth: "160px" }}>
-              {CONCRETE_GACHA_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <input type="text" placeholder="Search by name..." value={search} onChange={(e) => setSearch(e.target.value)} />
+
+          <div className="filters">
+            <div className="inline-form">
+              <select
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value as ConcreteGachaCategory);
+                  setLimit(50);
+                }}
+                style={{ maxWidth: "150px" }}
+              >
+                {CONCRETE_GACHA_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setLimit(50);
+                }}
+              />
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as typeof sortKey)}
+                style={{ maxWidth: "190px" }}
+              >
+                <option value="name-asc">Name A → Z</option>
+                <option value="name-desc">Name Z → A</option>
+                <option value="rarity-desc">Rarity: highest first</option>
+                <option value="rarity-asc">Rarity: lowest first</option>
+              </select>
+            </div>
+
+            <div className="tier-filter">
+              {TIER_BANDS.map((band) => {
+                const on = tiers.includes(band.name);
+                return (
+                  <label key={band.name} className={`tier-check${on ? " tier-check--on" : ""}`} style={tierStyle(band.color)}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() => {
+                        setTiers((prev) => (on ? prev.filter((t) => t !== band.name) : [...prev, band.name]));
+                        setLimit(50);
+                      }}
+                    />
+                    {band.name}
+                  </label>
+                );
+              })}
+              {tiers.length > 0 && (
+                <button type="button" className="btn-ghost btn-sm" onClick={() => setTiers([])}>
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {entryPage && (
+              <span className="dim">
+                Showing {entries?.length ?? 0} of {entryPage.total}
+                {tiers.length > 0 ? ` in ${tiers.length} tier${tiers.length > 1 ? "s" : ""}` : ""}
+              </span>
+            )}
           </div>
 
           {isLoading && <p className="dim">Loading...</p>}
@@ -271,6 +342,16 @@ export function EntriesPage() {
               );
             })}
           </div>
+
+          {entryPage && entries && entries.length < entryPage.total && (
+            <div>
+              <button type="button" className="btn-ghost" onClick={() => setLimit((current) => current + 50)}>
+                Load more ({entryPage.total - entries.length} left)
+              </button>
+            </div>
+          )}
+
+          {entryPage && entryPage.total === 0 && <p className="empty">No entries match these filters.</p>}
         </section>
       </main>
     </AppShell>

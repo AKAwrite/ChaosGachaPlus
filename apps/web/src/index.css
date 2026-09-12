@@ -1019,6 +1019,55 @@ textarea:focus {
 
 /* ----------------------------------------------------------------- entry */
 
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.tier-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.tier-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.tier-check:hover {
+  border-color: var(--border-strong);
+}
+
+.tier-check--on {
+  color: var(--tier-color);
+  border-color: color-mix(in srgb, var(--tier-color) 55%, transparent);
+  background: color-mix(in srgb, var(--tier-color) 12%, transparent);
+}
+
+.tier-check input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--tier-color);
+}
+
 .entry-row {
   display: flex;
   flex-direction: column;

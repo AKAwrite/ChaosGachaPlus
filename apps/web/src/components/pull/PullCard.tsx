@@ -1,5 +1,7 @@
-import type { CSSProperties } from "react";
 import { isHighTier } from "@chaosgachaplus/shared";
+import { tierStyle } from "../../lib/tier";
+import { CategoryGlyph } from "../common/CategoryGlyph";
+import { TierPill } from "../common/TierPill";
 import type { ProposalOption } from "../../api/pulls";
 
 interface PullCardProps {
@@ -9,23 +11,43 @@ interface PullCardProps {
   onSelect?: () => void;
 }
 
-export function PullCard({ option, selected, selectable, onSelect }: PullCardProps) {
-  const flourish = isHighTier(option.tier);
+export function PullCard({ option, selected = false, selectable = false, onSelect }: PullCardProps) {
+  const className = [
+    "pull-card",
+    isHighTier(option.tier) ? "pull-card--flourish" : "",
+    selectable ? "pull-card--selectable" : "",
+    selected ? "pull-card--selected" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const content = (
+    <>
+      {selected && <span className="pull-card__check" aria-hidden="true">✓</span>}
+      <div className="pull-card__head">
+        <TierPill tier={option.tier} color={option.color} />
+        <CategoryGlyph category={option.category} size={22} className="glyph" />
+      </div>
+      <div className="pull-card__name">{option.name}</div>
+      <div className="pull-card__meta">
+        <span>Rarity {option.rarity.toFixed(1)}</span>
+        <span>{option.luckPercent.toFixed(2)}% odds</span>
+      </div>
+      <p className="pull-card__desc">{option.description}</p>
+    </>
+  );
+
+  if (!selectable) {
+    return (
+      <div className={className} style={tierStyle(option.color)}>
+        {content}
+      </div>
+    );
+  }
 
   return (
-    <button
-      type="button"
-      className={`pull-card${flourish ? " pull-card--flourish" : ""}${selected ? " pull-card--selected" : ""}`}
-      style={{ "--tier-color": option.color } as CSSProperties}
-      onClick={selectable ? onSelect : undefined}
-      disabled={!selectable}
-    >
-      <span className="pull-card__tier">{option.tier}</span>
-      <span className="pull-card__name">{option.name}</span>
-      <span className="pull-card__meta">
-        {option.category} · rarity {option.rarity.toFixed(1)} · {option.luckPercent.toFixed(2)}% luck
-      </span>
-      <p className="pull-card__description">{option.description}</p>
+    <button type="button" className={className} style={tierStyle(option.color)} onClick={onSelect} aria-pressed={selected}>
+      {content}
     </button>
   );
 }

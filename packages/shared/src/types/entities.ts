@@ -16,7 +16,7 @@ export interface Character {
 export interface Ticket {
   id: string;
   characterId: string;
-  feat: string;
+  feat: string | null;
   category: GachaCategory;
   presetName: RarityPresetName | null;
   minRarity: number;

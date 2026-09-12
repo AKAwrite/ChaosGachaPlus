@@ -20,32 +20,36 @@ export function LoginPage() {
       await login({ email, password });
       navigate("/stories");
     } catch {
-      // loginError already reflects the failure; nothing further to do here.
+      // loginError already carries the message.
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <main className="auth-page">
-      <h1>Log in</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        {loginError && <p role="alert">{loginError}</p>}
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Logging in..." : "Log in"}
-        </button>
-      </form>
-      <p>
-        No account yet? <Link to="/register">Register</Link>
-      </p>
-    </main>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-card__brand">
+          Chaos<span>Gacha</span>Plus
+        </div>
+        <form onSubmit={handleSubmit}>
+          <label>
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </label>
+          <label>
+            Password
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </label>
+          {loginError && <p role="alert">{loginError}</p>}
+          <button type="submit" className="btn-primary btn-lg" disabled={isSubmitting}>
+            {isSubmitting ? "Entering..." : "Enter"}
+          </button>
+        </form>
+        <p className="auth-card__foot">
+          No account yet? <Link to="/register">Create one</Link>
+        </p>
+      </div>
+    </div>
   );
 }

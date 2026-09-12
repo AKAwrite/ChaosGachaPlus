@@ -112,7 +112,8 @@ model GachaEntry {
 model Ticket {
   id          String         @id @default(uuid())
   characterId String
-  feat        String
+  // Optional: a ticket doesn't need a story reason, sometimes you just have one.
+  feat        String?
   category    TicketCategory
   presetName  RarityPreset?
   minRarity   Decimal        @db.Decimal(3, 1)

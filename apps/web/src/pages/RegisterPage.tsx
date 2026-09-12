@@ -20,38 +20,36 @@ export function RegisterPage() {
       await register({ email, password });
       navigate("/stories");
     } catch {
-      // registerError already reflects the failure; nothing further to do here.
+      // registerError already carries the message.
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <main className="auth-page">
-      <h1>Create an account</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
-        </label>
-        {registerError && <p role="alert">{registerError}</p>}
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating account..." : "Create account"}
-        </button>
-      </form>
-      <p>
-        Already have an account? <Link to="/login">Log in</Link>
-      </p>
-    </main>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-card__brand">
+          Chaos<span>Gacha</span>Plus
+        </div>
+        <form onSubmit={handleSubmit}>
+          <label>
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </label>
+          <label>
+            Password
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+          </label>
+          {registerError && <p role="alert">{registerError}</p>}
+          <button type="submit" className="btn-primary btn-lg" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create account"}
+          </button>
+        </form>
+        <p className="auth-card__foot">
+          Already have an account? <Link to="/login">Log in</Link>
+        </p>
+      </div>
+    </div>
   );
 }

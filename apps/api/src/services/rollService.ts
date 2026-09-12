@@ -3,6 +3,7 @@ import {
   resolvePool,
   rollGacha,
   type ConcreteGachaCategory,
+  type PoolEntry,
   type RollResult,
 } from "@chaosgachaplus/shared";
 import type { PrismaClient, Ticket } from "../../generated/client/index.js";
@@ -52,17 +53,36 @@ export async function rollForTicket(prisma: PrismaClient, userId: string, storyI
   });
 
   const rollCount = ticket.isAdvantage ? 2 : 1;
+  const min = Number(ticket.minRarity);
+  const max = Number(ticket.maxRarity);
+
   const results: RollResult[] = [];
   for (let i = 0; i < rollCount; i++) {
     results.push(
       rollGacha({
         entries: pool,
-        min: Number(ticket.minRarity),
+        min,
         avg: Number(ticket.avgRarity),
-        max: Number(ticket.maxRarity),
+        max,
       }),
     );
   }
 
-  return results;
+  return { results, decoys: sampleDecoys(pool, min, max) };
+}
+
+/**
+ * Names the client spins past in the roll animation before landing on the
+ * real result. Drawn from the same resolved pool so they always look like
+ * plausible near-misses (and respect the user's own exclusions).
+ */
+function sampleDecoys(pool: PoolEntry[], min: number, max: number, count = 24): string[] {
+  const inBand = pool.filter((entry) => entry.rarity > min && entry.rarity <= max);
+  const source = inBand.length >= count ? inBand : pool;
+
+  const decoys: string[] = [];
+  for (let i = 0; i < count && source.length > 0; i++) {
+    decoys.push(source[Math.floor(Math.random() * source.length)].name);
+  }
+  return decoys;
 }

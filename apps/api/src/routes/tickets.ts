@@ -7,9 +7,11 @@ import { logHistoryEvent } from "../lib/historyLog.js";
 import type { Ticket } from "../../generated/client/index.js";
 
 const baseTicketFields = {
-  feat: z.string().trim().min(1).max(500),
+  feat: z.string().trim().max(500).optional(),
   category: z.enum(GACHA_CATEGORIES),
   isAdvantage: z.boolean().default(false),
+  /** Mint several identical tickets from one feat (e.g. "3 Gold tickets for being born"). */
+  quantity: z.number().int().min(1).max(20).default(1),
 };
 
 const presetTicketSchema = z
@@ -67,26 +69,43 @@ export async function ticketRoutes(app: FastifyInstance) {
           ? { presetName: data.presetName, ...RARITY_PRESET_RANGES[data.presetName] }
           : { presetName: null, min: data.minRarity, avg: data.avgRarity, max: data.maxRarity };
 
-      const ticket = await app.prisma.ticket.create({
-        data: {
+      const label = `${presetName ?? `${min}-${avg}-${max}`} ${data.category}`;
+      const feat = data.feat?.trim() ? data.feat.trim() : null;
+
+      const tickets = await app.prisma.$transaction(async (tx) => {
+        const created = [];
+        for (let i = 0; i < data.quantity; i++) {
+          created.push(
+            await tx.ticket.create({
+              data: {
+                characterId: character.id,
+                feat,
+                category: data.category,
+                isAdvantage: data.isAdvantage,
+                presetName,
+                minRarity: min,
+                avgRarity: avg,
+                maxRarity: max,
+              },
+            }),
+          );
+        }
+
+        await logHistoryEvent(tx, {
           characterId: character.id,
-          feat: data.feat,
-          category: data.category,
-          isAdvantage: data.isAdvantage,
-          presetName,
-          minRarity: min,
-          avgRarity: avg,
-          maxRarity: max,
-        },
+          storyId: request.params.storyId,
+          type: "TICKET_EARNED",
+          summary:
+            data.quantity > 1
+              ? `Earned ${data.quantity}x ${label} tickets${feat ? `: ${feat}` : ""}`
+              : `Earned a ${label} ticket${feat ? `: ${feat}` : ""}`,
+          ticketId: created[0].id,
+        });
+
+        return created;
       });
-      await logHistoryEvent(app.prisma, {
-        characterId: character.id,
-        storyId: request.params.storyId,
-        type: "TICKET_EARNED",
-        summary: `Earned a ${presetName ?? `${min}-${avg}-${max}`} ${data.category} ticket: ${data.feat}`,
-        ticketId: ticket.id,
-      });
-      reply.code(201).send(toTicketDTO(ticket));
+
+      reply.code(201).send(tickets.map(toTicketDTO));
     },
   );
 

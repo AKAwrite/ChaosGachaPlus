@@ -13,7 +13,13 @@ export interface ProposalOption {
   luckPercent: number;
 }
 
-export type ProposalsByTicket = Record<string, ProposalOption[]>;
+export interface TicketProposal {
+  options: ProposalOption[];
+  /** Names from the same pool, used as filler in the roll animation. */
+  decoys: string[];
+}
+
+export type ProposalsByTicket = Record<string, TicketProposal>;
 
 export interface Pull {
   id: string;

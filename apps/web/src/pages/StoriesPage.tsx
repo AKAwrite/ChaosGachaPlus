@@ -1,10 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
 import { useCreateStory, useDeleteStory, useStories } from "../hooks/useStories";
+import { AppShell } from "../components/common/AppShell";
 
 export function StoriesPage() {
-  const { user, logout } = useAuth();
   const { data: stories, isLoading } = useStories();
   const createStory = useCreateStory();
   const deleteStory = useDeleteStory();
@@ -18,52 +17,49 @@ export function StoriesPage() {
   }
 
   return (
-    <main>
-      <header className="app-header">
-        <h1>Your stories</h1>
-        <div>
-          <Link to="/entries">Entries</Link>
-          <span>{user?.email}</span>
-          <button type="button" onClick={() => logout()}>
-            Log out
-          </button>
+    <AppShell>
+      <main className="page">
+        <div className="page-head">
+          <div>
+            <div className="page-head__sub">Your worlds</div>
+            <h1>Stories</h1>
+          </div>
         </div>
-      </header>
 
-      <form onSubmit={handleCreate} className="inline-form">
-        <input
-          type="text"
-          placeholder="New story title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-        <button type="submit" disabled={createStory.isPending}>
-          Create story
-        </button>
-      </form>
+        <form onSubmit={handleCreate} className="inline-form">
+          <input type="text" placeholder="Name a new story..." value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <button type="submit" className="btn-primary" disabled={createStory.isPending}>
+            Create
+          </button>
+        </form>
 
-      {isLoading && <p>Loading...</p>}
-      {stories && stories.length === 0 && <p>No stories yet. Create your first one above.</p>}
+        {isLoading && <p className="dim">Loading...</p>}
+        {stories && stories.length === 0 && <p className="empty">No stories yet. Name your first one above.</p>}
 
-      <ul className="entity-list">
-        {stories?.map((story) => (
-          <li key={story.id}>
-            <Link to={`/stories/${story.id}`}>{story.title}</Link>
-            <button
-              type="button"
-              className="danger"
-              onClick={() => {
-                if (confirm(`Delete "${story.title}" and everything in it?`)) {
-                  deleteStory.mutate(story.id);
-                }
-              }}
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
-    </main>
+        <div className="card-grid">
+          {stories?.map((story) => (
+            <div key={story.id} className="link-card">
+              <Link to={`/stories/${story.id}`} className="link-card__title">
+                {story.title}
+              </Link>
+              <span className="link-card__meta">Created {new Date(story.createdAt).toLocaleDateString()}</span>
+              <div className="link-card__foot">
+                <button
+                  type="button"
+                  className="btn-danger btn-sm"
+                  onClick={() => {
+                    if (confirm(`Delete "${story.title}" and everything in it?`)) {
+                      deleteStory.mutate(story.id);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </AppShell>
   );
 }

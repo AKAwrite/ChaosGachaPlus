@@ -72,9 +72,9 @@ export async function pullRoutes(app: FastifyInstance) {
 
       await app.prisma.pullProposal.deleteMany({ where: { ticketId: { in: ticketIds } } });
 
-      const grouped: Record<string, ReturnType<typeof toProposalDTO>[]> = {};
+      const grouped: Record<string, { options: ReturnType<typeof toProposalDTO>[]; decoys: string[] }> = {};
       for (const ticket of tickets) {
-        const results = await rollForTicket(app.prisma, userId, request.params.storyId, ticket);
+        const { results, decoys } = await rollForTicket(app.prisma, userId, request.params.storyId, ticket);
         const proposals = await Promise.all(
           results.map((result, optionIndex) =>
             app.prisma.pullProposal.create({
@@ -94,7 +94,7 @@ export async function pullRoutes(app: FastifyInstance) {
             }),
           ),
         );
-        grouped[ticket.id] = proposals.map(toProposalDTO);
+        grouped[ticket.id] = { options: proposals.map(toProposalDTO), decoys };
       }
 
       reply.send(grouped);

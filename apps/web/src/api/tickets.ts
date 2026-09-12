@@ -2,9 +2,10 @@ import type { GachaCategory, RarityPresetName, Ticket } from "@chaosgachaplus/sh
 import { apiFetch } from "./client";
 
 interface BaseTicketInput {
-  feat: string;
+  feat?: string;
   category: GachaCategory;
   isAdvantage: boolean;
+  quantity?: number;
 }
 
 export type CreateTicketInput =
@@ -19,7 +20,7 @@ export function listTickets(storyId: string, characterId: string, status: Ticket
 }
 
 export function createTicket(storyId: string, characterId: string, input: CreateTicketInput) {
-  return apiFetch<Ticket>(`/stories/${storyId}/characters/${characterId}/tickets`, {
+  return apiFetch<Ticket[]>(`/stories/${storyId}/characters/${characterId}/tickets`, {
     method: "POST",
     body: JSON.stringify(input),
   });

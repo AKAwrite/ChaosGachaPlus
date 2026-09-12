@@ -8,6 +8,33 @@ export function usePulls(storyId: string, characterId: string) {
   });
 }
 
+/** Optimistic: flipping "consumed" is cheap and reversible, so don't make the user wait for the round trip. */
+export function useSetPullConsumed(storyId: string, characterId: string) {
+  const queryClient = useQueryClient();
+  const queryKey = ["stories", storyId, "characters", characterId, "pulls"];
+
+  return useMutation({
+    mutationFn: ({ pullId, consumed }: { pullId: string; consumed: boolean }) =>
+      pullsApi.setPullConsumed(storyId, characterId, pullId, consumed),
+    onMutate: async ({ pullId, consumed }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<pullsApi.Pull[]>(queryKey);
+      queryClient.setQueryData<pullsApi.Pull[]>(queryKey, (old) =>
+        old?.map((pull) =>
+          pull.id === pullId ? { ...pull, consumedAt: consumed ? new Date().toISOString() : null } : pull,
+        ),
+      );
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["stories", storyId, "characters", characterId, "history"] });
+    },
+  });
+}
+
 export function useProposeRolls(storyId: string, characterId: string) {
   return useMutation({
     mutationFn: (ticketIds: string[]) => pullsApi.proposeRolls(storyId, characterId, ticketIds),

@@ -37,6 +37,36 @@ export async function inventoryRoutes(app: FastifyInstance) {
     },
   );
 
+  app.post<{ Params: { itemId: string }; Body: { consumed?: boolean } }>(
+    "/items/:itemId/consume",
+    async (request, reply) => {
+      const userId = getAuthUserId(request);
+      const item = await app.prisma.inventoryItem.findFirst({
+        where: { id: request.params.itemId, character: { story: { userId } } },
+        include: { character: true },
+      });
+      if (!item) {
+        return reply.code(404).send({ error: "Item not found" });
+      }
+
+      const consumed = request.body?.consumed ?? true;
+      const updated = await app.prisma.inventoryItem.update({
+        where: { id: item.id },
+        data: { consumedAt: consumed ? new Date() : null },
+      });
+
+      await logHistoryEvent(app.prisma, {
+        characterId: item.characterId,
+        storyId: item.character.storyId,
+        type: consumed ? "ENTRY_CONSUMED" : "ENTRY_RESTORED",
+        summary: consumed ? `Used up ${item.name}` : `Recovered ${item.name}`,
+        itemId: item.id,
+      });
+
+      reply.send(toItemDTO(updated));
+    },
+  );
+
   // Moves an item to another character in the same Story (kept in-story so
   // an item transfer stays diegetic to a single narrative).
   app.post<{ Params: { itemId: string } }>("/items/:itemId/transfer", async (request, reply) => {

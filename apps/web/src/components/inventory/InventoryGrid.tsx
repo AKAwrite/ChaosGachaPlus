@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Character } from "@chaosgachaplus/shared";
-import { useInventory, useTransferItem } from "../../hooks/useInventory";
+import { useInventory, useSetItemConsumed, useTransferItem } from "../../hooks/useInventory";
 import { tierName, tierStyle } from "../../lib/tier";
 import { CategoryGlyph } from "../common/CategoryGlyph";
 import { TierPill } from "../common/TierPill";
@@ -17,25 +17,36 @@ interface InventoryGridProps {
 export function InventoryGrid({ storyId, characterId, otherCharacters }: InventoryGridProps) {
   const { data: items, isLoading } = useInventory(storyId, characterId);
   const transfer = useTransferItem(storyId);
-  const [open, setOpen] = useState<InventoryItem | null>(null);
+  const setConsumed = useSetItemConsumed(storyId, characterId);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [target, setTarget] = useState("");
+  const [showConsumed, setShowConsumed] = useState(false);
 
   if (isLoading) return <p className="dim">Loading...</p>;
 
-  const owned = items ?? [];
+  const all = items ?? [];
+  const consumedCount = all.filter((item) => item.consumedAt).length;
+  const owned: InventoryItem[] = showConsumed ? all : all.filter((item) => !item.consumedAt);
+  const open = all.find((item) => item.id === openId) ?? null;
   const emptySlots = Math.max(0, MIN_SLOTS - owned.length);
 
   return (
     <>
+      {consumedCount > 0 && (
+        <label className="check">
+          <input type="checkbox" checked={showConsumed} onChange={(e) => setShowConsumed(e.target.checked)} />
+          <span className="dim">Show used up ({consumedCount})</span>
+        </label>
+      )}
       <div className="inv-grid">
         {owned.map((item) => (
           <button
             key={item.id}
             type="button"
-            className="inv-slot"
+            className={`inv-slot${item.consumedAt ? " inv-slot--consumed" : ""}`}
             style={tierStyle(item.rarity)}
             onClick={() => {
-              setOpen(item);
+              setOpenId(item.id);
               setTarget("");
             }}
             title={item.name}
@@ -50,7 +61,7 @@ export function InventoryGrid({ storyId, characterId, otherCharacters }: Invento
       </div>
 
       {open && (
-        <div className="modal-backdrop" onClick={() => setOpen(null)} role="presentation">
+        <div className="modal-backdrop" onClick={() => setOpenId(null)} role="presentation">
           <div
             className="modal"
             style={tierStyle(open.rarity)}
@@ -67,37 +78,45 @@ export function InventoryGrid({ storyId, characterId, otherCharacters }: Invento
               {open.description}
             </p>
 
-            {otherCharacters.length > 0 && (
-              <div className="stack">
-                <label>
-                  Give to
-                  <select value={target} onChange={(e) => setTarget(e.target.value)}>
-                    <option value="">Select a character...</option>
-                    {otherCharacters.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+            {open.consumedAt && <p className="dim">Used up {new Date(open.consumedAt).toLocaleDateString()}</p>}
+
+            {otherCharacters.length > 0 && !open.consumedAt && (
+              <label>
+                Give to
+                <select value={target} onChange={(e) => setTarget(e.target.value)}>
+                  <option value="">Select a character...</option>
+                  {otherCharacters.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
 
             <div className="row">
-              {otherCharacters.length > 0 && (
+              {otherCharacters.length > 0 && !open.consumedAt && (
                 <button
                   type="button"
                   className="btn-primary"
                   disabled={!target || transfer.isPending}
                   onClick={async () => {
                     await transfer.mutateAsync({ itemId: open.id, toCharacterId: target });
-                    setOpen(null);
+                    setOpenId(null);
                   }}
                 >
                   Transfer
                 </button>
               )}
-              <button type="button" className="btn-ghost" onClick={() => setOpen(null)}>
+              <button
+                type="button"
+                className={open.consumedAt ? "btn-primary" : "btn-danger"}
+                disabled={setConsumed.isPending}
+                onClick={() => setConsumed.mutate({ itemId: open.id, consumed: !open.consumedAt })}
+              >
+                {open.consumedAt ? "Recover" : "Use up"}
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => setOpenId(null)}>
                 Close
               </button>
             </div>

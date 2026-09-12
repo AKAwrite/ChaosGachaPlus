@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { GachaCategory } from "@chaosgachaplus/shared";
 import { tierName, tierStyle } from "../../lib/tier";
 import { CategoryGlyph } from "./CategoryGlyph";
@@ -12,7 +12,15 @@ export interface EntryDetail {
   footnote?: string;
 }
 
-export function EntryDetailModal({ entry, onClose }: { entry: EntryDetail; onClose: () => void }) {
+export function EntryDetailModal({
+  entry,
+  actions,
+  onClose,
+}: {
+  entry: EntryDetail;
+  actions?: ReactNode;
+  onClose: () => void;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -31,7 +39,8 @@ export function EntryDetailModal({ entry, onClose }: { entry: EntryDetail; onClo
           {entry.description}
         </p>
         {entry.footnote && <p className="dim">{entry.footnote}</p>}
-        <div>
+        <div className="row">
+          {actions}
           <button type="button" className="btn-ghost" onClick={onClose}>
             Close
           </button>

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { ConcreteGachaCategory } from "@chaosgachaplus/shared";
 import { tierStyle } from "../../lib/tier";
+import { useSetPullConsumed } from "../../hooks/useRolls";
 import { CategoryGlyph } from "../common/CategoryGlyph";
 import { TierPill } from "../common/TierPill";
-import { EntryDetailModal, type EntryDetail } from "../common/EntryDetailModal";
+import { EntryDetailModal } from "../common/EntryDetailModal";
 import type { Pull } from "../../api/pulls";
 
 const GROUPS: Array<{ category: ConcreteGachaCategory; label: string }> = [
@@ -13,10 +14,21 @@ const GROUPS: Array<{ category: ConcreteGachaCategory; label: string }> = [
   { category: "familiar", label: "Familiars" },
 ];
 
-export function CharacterSheet({ pulls }: { pulls: Pull[] }) {
-  const [detail, setDetail] = useState<EntryDetail | null>(null);
+interface CharacterSheetProps {
+  storyId: string;
+  characterId: string;
+  pulls: Pull[];
+}
+
+export function CharacterSheet({ storyId, characterId, pulls }: CharacterSheetProps) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [showConsumed, setShowConsumed] = useState(false);
+  const setConsumed = useSetPullConsumed(storyId, characterId);
 
   const owned = pulls.filter((pull) => pull.category !== "item");
+  const consumedCount = owned.filter((pull) => pull.consumedAt).length;
+  const visible = showConsumed ? owned : owned.filter((pull) => !pull.consumedAt);
+  const open = owned.find((pull) => pull.id === openId) ?? null;
 
   if (owned.length === 0) {
     return <p className="empty">Nothing acquired yet. Earn a ticket and roll to start building this character.</p>;
@@ -24,8 +36,15 @@ export function CharacterSheet({ pulls }: { pulls: Pull[] }) {
 
   return (
     <div className="stack" style={{ gap: "1.4rem" }}>
+      {consumedCount > 0 && (
+        <label className="check">
+          <input type="checkbox" checked={showConsumed} onChange={(e) => setShowConsumed(e.target.checked)} />
+          <span className="dim">Show consumed ({consumedCount})</span>
+        </label>
+      )}
+
       {GROUPS.map(({ category, label }) => {
-        const entries = owned
+        const entries = visible
           .filter((pull) => pull.category === category)
           .sort((a, b) => b.rarity - a.rarity);
         if (entries.length === 0) return null;
@@ -42,21 +61,16 @@ export function CharacterSheet({ pulls }: { pulls: Pull[] }) {
                 <button
                   key={pull.id}
                   type="button"
-                  className="trait-card"
+                  className={`trait-card${pull.consumedAt ? " trait-card--consumed" : ""}`}
                   style={tierStyle(pull.rarity)}
-                  onClick={() =>
-                    setDetail({
-                      name: pull.name,
-                      description: pull.description,
-                      rarity: pull.rarity,
-                      category: pull.category,
-                      footnote: pull.ticketFeat ? `Earned from: ${pull.ticketFeat}` : undefined,
-                    })
-                  }
+                  onClick={() => setOpenId(pull.id)}
                 >
                   <CategoryGlyph category={pull.category} size={20} className="glyph" />
                   <span className="trait-card__body">
-                    <span className="trait-card__name">{pull.name}</span>
+                    <span className="trait-card__name">
+                      {pull.name}
+                      {pull.consumedAt && <span className="badge">consumed</span>}
+                    </span>
                     <span className="trait-card__desc clamp-2">{pull.description}</span>
                   </span>
                   <TierPill tier={pull.tier} rarity={pull.rarity} />
@@ -67,7 +81,33 @@ export function CharacterSheet({ pulls }: { pulls: Pull[] }) {
         );
       })}
 
-      {detail && <EntryDetailModal entry={detail} onClose={() => setDetail(null)} />}
+      {open && (
+        <EntryDetailModal
+          entry={{
+            name: open.name,
+            description: open.description,
+            rarity: open.rarity,
+            category: open.category,
+            footnote: [
+              open.ticketFeat ? `Earned from: ${open.ticketFeat}` : null,
+              open.consumedAt ? `Consumed ${new Date(open.consumedAt).toLocaleDateString()}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+          }}
+          onClose={() => setOpenId(null)}
+          actions={
+            <button
+              type="button"
+              className={open.consumedAt ? "btn-primary" : "btn-danger"}
+              disabled={setConsumed.isPending}
+              onClick={() => setConsumed.mutate({ pullId: open.id, consumed: !open.consumedAt })}
+            >
+              {open.consumedAt ? "Regain" : "Consume"}
+            </button>
+          }
+        />
+      )}
     </div>
   );
 }

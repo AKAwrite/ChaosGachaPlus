@@ -514,6 +514,16 @@ textarea:focus {
   filter: brightness(1.1);
 }
 
+.trait-card--consumed {
+  opacity: 0.45;
+  filter: saturate(0.4);
+}
+
+.trait-card--consumed .trait-card__name {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-dim);
+}
+
 .trait-card__body {
   display: flex;
   flex-direction: column;
@@ -587,6 +597,11 @@ textarea:focus {
   line-clamp: 2;
   overflow: hidden;
   word-break: break-word;
+}
+
+.inv-slot--consumed {
+  opacity: 0.4;
+  filter: saturate(0.3);
 }
 
 .inv-slot--empty {
@@ -742,6 +757,24 @@ textarea:focus {
   font-weight: 600;
 }
 
+.dedupe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.dedupe__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
 /* -------------------------------------------------------------- pullcard */
 
 @keyframes pull-in {
@@ -832,6 +865,17 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.pull-card__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
 .pull-card__name {

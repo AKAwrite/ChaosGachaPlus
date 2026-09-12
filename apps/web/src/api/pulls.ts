@@ -32,7 +32,8 @@ export interface Pull {
   tier: string;
   luckPercent: number;
   rolledAt: string;
-  ticketFeat?: string;
+  consumedAt: string | null;
+  ticketFeat?: string | null;
 }
 
 export function proposeRolls(storyId: string, characterId: string, ticketIds: string[]) {
@@ -55,4 +56,11 @@ export function commitRolls(
 
 export function listPulls(storyId: string, characterId: string) {
   return apiFetch<Pull[]>(`/stories/${storyId}/characters/${characterId}/pulls`);
+}
+
+export function setPullConsumed(storyId: string, characterId: string, pullId: string, consumed: boolean) {
+  return apiFetch<Pull>(`/stories/${storyId}/characters/${characterId}/pulls/${pullId}/consume`, {
+    method: "POST",
+    body: JSON.stringify({ consumed }),
+  });
 }

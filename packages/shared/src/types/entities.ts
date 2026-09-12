@@ -1,8 +1,12 @@
 import type { GachaCategory, RarityPresetName } from "./domain.js";
 
+export type DedupeMode = "off" | "character" | "story";
+
 export interface Story {
   id: string;
   title: string;
+  /** Whether rolls may repeat something already held. */
+  dedupeMode: DedupeMode;
   createdAt: string;
 }
 

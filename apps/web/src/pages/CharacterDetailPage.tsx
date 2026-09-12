@@ -1,5 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useCharacter, useCharacters } from "../hooks/useCharacters";
+import { useStory } from "../hooks/useStories";
+import { DedupeControl } from "../components/pull/DedupeControl";
 import { useDeleteTicket, useTickets } from "../hooks/useTickets";
 import { usePulls } from "../hooks/useRolls";
 import { useCharacterHistory } from "../hooks/useHistory";
@@ -15,6 +17,7 @@ import { TierPill } from "../components/common/TierPill";
 export function CharacterDetailPage() {
   const { storyId, characterId } = useParams<{ storyId: string; characterId: string }>();
   const { data: character } = useCharacter(storyId, characterId);
+  const { data: story } = useStory(storyId);
   const { data: allCharacters } = useCharacters(storyId);
   const { data: tickets } = useTickets(storyId!, characterId!);
   const { data: pulls } = usePulls(storyId!, characterId!);
@@ -55,13 +58,14 @@ export function CharacterDetailPage() {
 
         <section className="section">
           <h2>Roll</h2>
-          <div className="panel">
+          <div className="panel stack">
             <RollSession
               storyId={storyId!}
               characterId={characterId!}
               tickets={unusedTickets}
               onDeleteTicket={(id) => deleteTicket.mutate(id)}
             />
+            {story && <DedupeControl storyId={storyId!} mode={story.dedupeMode} />}
           </div>
           <Collapsible title="Earn a ticket">
             <TicketForm storyId={storyId!} characterId={characterId!} />
@@ -70,7 +74,7 @@ export function CharacterDetailPage() {
 
         <section className="section">
           <h2>Character sheet</h2>
-          <CharacterSheet pulls={acquired} />
+          <CharacterSheet storyId={storyId!} characterId={characterId!} pulls={acquired} />
         </section>
 
         <section className="section">

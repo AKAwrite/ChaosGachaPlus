@@ -4,6 +4,14 @@ import { CategoryGlyph } from "../common/CategoryGlyph";
 import { TierPill } from "../common/TierPill";
 import type { ProposalOption } from "../../api/pulls";
 
+const CATEGORY_LABELS: Record<string, string> = {
+  ability: "Ability",
+  item: "Item",
+  familiar: "Familiar",
+  trait: "Trait",
+  skill: "Skill",
+};
+
 interface PullCardProps {
   option: ProposalOption;
   selected?: boolean;
@@ -26,7 +34,11 @@ export function PullCard({ option, selected = false, selectable = false, onSelec
       {selected && <span className="pull-card__check" aria-hidden="true">✓</span>}
       <div className="pull-card__head">
         <TierPill tier={option.tier} color={option.color} />
-        <CategoryGlyph category={option.category} size={22} className="glyph" />
+        {/* The glyphs aren't a convention anyone knows yet, so name the kind outright at the moment of the pull. */}
+        <span className="pull-card__kind">
+          <CategoryGlyph category={option.category} size={18} className="glyph" />
+          {CATEGORY_LABELS[option.category] ?? option.category}
+        </span>
       </div>
       <div className="pull-card__name">{option.name}</div>
       <div className="pull-card__meta">

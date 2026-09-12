@@ -1,6 +1,8 @@
 import type { Story } from "@chaosgachaplus/shared";
 import { apiFetch } from "./client";
 
+export type DedupeMode = "off" | "character" | "story";
+
 export function listStories() {
   return apiFetch<Story[]>("/stories");
 }
@@ -13,8 +15,8 @@ export function createStory(title: string) {
   return apiFetch<Story>("/stories", { method: "POST", body: JSON.stringify({ title }) });
 }
 
-export function updateStory(storyId: string, title: string) {
-  return apiFetch<Story>(`/stories/${storyId}`, { method: "PATCH", body: JSON.stringify({ title }) });
+export function updateStory(storyId: string, input: { title?: string; dedupeMode?: DedupeMode }) {
+  return apiFetch<Story>(`/stories/${storyId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function deleteStory(storyId: string) {

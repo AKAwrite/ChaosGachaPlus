@@ -10,7 +10,9 @@ export async function findOwnedCharacter(
   storyId: string,
   characterId: string,
 ) {
+  // Includes the story so callers get settings like dedupeMode without a second round trip.
   return prisma.character.findFirst({
     where: { id: characterId, storyId, story: { userId } },
+    include: { story: true },
   });
 }

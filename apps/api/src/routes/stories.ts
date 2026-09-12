@@ -7,6 +7,11 @@ const createStorySchema = z.object({
   title: z.string().trim().min(1).max(200),
 });
 
+const updateStorySchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  dedupeMode: z.enum(["off", "character", "story"]).optional(),
+});
+
 export async function storyRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
@@ -39,7 +44,7 @@ export async function storyRoutes(app: FastifyInstance) {
   });
 
   app.patch<{ Params: { storyId: string } }>("/stories/:storyId", async (request, reply) => {
-    const parsed = createStorySchema.safeParse(request.body);
+    const parsed = updateStorySchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.flatten() });
     }
@@ -51,7 +56,7 @@ export async function storyRoutes(app: FastifyInstance) {
 
     const updated = await app.prisma.story.update({
       where: { id: story.id },
-      data: { title: parsed.data.title },
+      data: parsed.data,
     });
     reply.send(updated);
   });

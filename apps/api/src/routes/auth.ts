@@ -31,7 +31,7 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(409).send({ error: "Email already registered" });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password, 10);
     const user = await app.prisma.user.create({
       data: { email, passwordHash },
     });

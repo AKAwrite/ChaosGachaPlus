@@ -17,7 +17,12 @@ const commitSchema = z.object({
     .max(20),
 });
 
-function toProposalDTO(proposal: PullProposal) {
+type ProposalFields = Pick<
+  PullProposal,
+  "ticketId" | "optionIndex" | "resolvedCategory" | "resolvedName" | "resolvedDescription" | "tier" | "color"
+> & { resolvedRarity: PullProposal["resolvedRarity"] | number; luckPercent: PullProposal["luckPercent"] | number };
+
+function toProposalDTO(proposal: ProposalFields) {
   return {
     ticketId: proposal.ticketId,
     optionIndex: proposal.optionIndex,
@@ -72,29 +77,38 @@ export async function pullRoutes(app: FastifyInstance) {
 
       await app.prisma.pullProposal.deleteMany({ where: { ticketId: { in: ticketIds } } });
 
+      // Roll everything first, then persist every proposal in one round trip -
+      // the database may be a long way from this process.
+      const rolled = await Promise.all(
+        tickets.map(async (ticket) => ({
+          ticket,
+          ...(await rollForTicket(app.prisma, userId, request.params.storyId, ticket, character.story.dedupeMode)),
+        })),
+      );
+
+      const rows = rolled.flatMap(({ ticket, results }) =>
+        results.map((result, optionIndex) => ({
+          ticketId: ticket.id,
+          optionIndex,
+          gachaEntryId: result.entry.gachaEntryId ?? null,
+          customizationId: result.entry.customizationId ?? null,
+          resolvedCategory: result.entry.category,
+          resolvedName: result.entry.name,
+          resolvedRarity: result.rarity,
+          resolvedDescription: result.entry.description,
+          tier: result.tier,
+          color: result.color,
+          luckPercent: result.luckPercent,
+        })),
+      );
+      await app.prisma.pullProposal.createMany({ data: rows });
+
       const grouped: Record<string, { options: ReturnType<typeof toProposalDTO>[]; decoys: string[] }> = {};
-      for (const ticket of tickets) {
-        const { results, decoys } = await rollForTicket(app.prisma, userId, request.params.storyId, ticket);
-        const proposals = await Promise.all(
-          results.map((result, optionIndex) =>
-            app.prisma.pullProposal.create({
-              data: {
-                ticketId: ticket.id,
-                optionIndex,
-                gachaEntryId: result.entry.gachaEntryId ?? null,
-                customizationId: result.entry.customizationId ?? null,
-                resolvedCategory: result.entry.category,
-                resolvedName: result.entry.name,
-                resolvedRarity: result.rarity,
-                resolvedDescription: result.entry.description,
-                tier: result.tier,
-                color: result.color,
-                luckPercent: result.luckPercent,
-              },
-            }),
-          ),
-        );
-        grouped[ticket.id] = { options: proposals.map(toProposalDTO), decoys };
+      for (const { ticket, decoys } of rolled) {
+        grouped[ticket.id] = {
+          options: rows.filter((row) => row.ticketId === ticket.id).map(toProposalDTO),
+          decoys,
+        };
       }
 
       reply.send(grouped);
@@ -223,6 +237,46 @@ export async function pullRoutes(app: FastifyInstance) {
           ticketFeat: pull.ticket.feat,
         })),
       );
+    },
+  );
+
+  // Consuming is a story event, not a deletion: the pull keeps its place in
+  // history, it just stops counting as something the character still has.
+  app.post<{ Params: { storyId: string; characterId: string; pullId: string }; Body: { consumed?: boolean } }>(
+    "/stories/:storyId/characters/:characterId/pulls/:pullId/consume",
+    async (request, reply) => {
+      const character = await findOwnedCharacter(
+        app.prisma,
+        getAuthUserId(request),
+        request.params.storyId,
+        request.params.characterId,
+      );
+      if (!character) {
+        return reply.code(404).send({ error: "Character not found" });
+      }
+
+      const pull = await app.prisma.pull.findFirst({
+        where: { id: request.params.pullId, ticket: { characterId: character.id } },
+      });
+      if (!pull) {
+        return reply.code(404).send({ error: "Pull not found" });
+      }
+
+      const consumed = request.body?.consumed ?? true;
+      const updated = await app.prisma.pull.update({
+        where: { id: pull.id },
+        data: { consumedAt: consumed ? new Date() : null },
+      });
+
+      await logHistoryEvent(app.prisma, {
+        characterId: character.id,
+        storyId: request.params.storyId,
+        type: consumed ? "ENTRY_CONSUMED" : "ENTRY_RESTORED",
+        summary: consumed ? `Consumed ${pull.name}` : `Regained ${pull.name}`,
+        pullId: pull.id,
+      });
+
+      reply.send(toPullDTO(updated));
     },
   );
 }

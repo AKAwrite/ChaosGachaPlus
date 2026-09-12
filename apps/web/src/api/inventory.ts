@@ -8,6 +8,7 @@ export interface InventoryItem {
   description: string;
   rarity: number;
   acquiredAt: string;
+  consumedAt: string | null;
 }
 
 export function listInventory(storyId: string, characterId: string) {
@@ -18,5 +19,12 @@ export function transferItem(itemId: string, toCharacterId: string) {
   return apiFetch<InventoryItem>(`/items/${itemId}/transfer`, {
     method: "POST",
     body: JSON.stringify({ toCharacterId }),
+  });
+}
+
+export function setItemConsumed(itemId: string, consumed: boolean) {
+  return apiFetch<InventoryItem>(`/items/${itemId}/consume`, {
+    method: "POST",
+    body: JSON.stringify({ consumed }),
   });
 }

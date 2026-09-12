@@ -49,6 +49,16 @@ enum HistoryEventType {
   ENTRY_EXCLUDED
   ENTRY_INCLUDED
   ENTRY_CUSTOMIZED
+  ENTRY_CONSUMED
+  ENTRY_RESTORED
+}
+
+/// Whether a roll may hand out something the character (or the whole story)
+/// has already won and still holds.
+enum DedupeMode {
+  off
+  character
+  story
 }
 
 model User {
@@ -62,10 +72,11 @@ model User {
 }
 
 model Story {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String
-  createdAt DateTime @default(now())
+  id         String     @id @default(uuid())
+  userId     String
+  title      String
+  dedupeMode DedupeMode @default(off)
+  createdAt  DateTime   @default(now())
 
   user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   characters     Character[]
@@ -175,6 +186,8 @@ model Pull {
   tier        String
   luckPercent Decimal       @db.Decimal(6, 3)
   rolledAt    DateTime      @default(now())
+  // Spent/lost in the story: drops out of the active sheet but keeps its history.
+  consumedAt  DateTime?
 
   ticket         Ticket                   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   gachaEntry     GachaEntry?              @relation(fields: [gachaEntryId], references: [id])
@@ -184,14 +197,15 @@ model Pull {
 }
 
 model InventoryItem {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   characterId   String
   sourcePullId  String
   name          String
   description   String
-  rarity        Decimal  @db.Decimal(3, 1)
-  acquiredAt    DateTime @default(now())
-  createdAt     DateTime @default(now())
+  rarity        Decimal   @db.Decimal(3, 1)
+  acquiredAt    DateTime  @default(now())
+  consumedAt    DateTime?
+  createdAt     DateTime  @default(now())
 
   character     Character      @relation("CurrentOwner", fields: [characterId], references: [id], onDelete: Cascade)
   sourcePull    Pull           @relation(fields: [sourcePullId], references: [id])

@@ -21,6 +21,18 @@ export function useCreateStory() {
   });
 }
 
+export function useUpdateStory(storyId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { title?: string; dedupeMode?: "off" | "character" | "story" }) =>
+      storiesApi.updateStory(storyId, input),
+    onSuccess: (story) => {
+      queryClient.setQueryData(["stories", storyId], story);
+      queryClient.invalidateQueries({ queryKey: ["stories"], exact: true });
+    },
+  });
+}
+
 export function useDeleteStory() {
   const queryClient = useQueryClient();
   return useMutation({

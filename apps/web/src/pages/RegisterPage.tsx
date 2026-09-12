@@ -29,9 +29,9 @@ export function RegisterPage() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="auth-card__brand">
+        <Link to="/" className="auth-card__brand">
           Chaos<span>Gacha</span>Plus
-        </div>
+        </Link>
         <form onSubmit={handleSubmit}>
           <label>
             Email

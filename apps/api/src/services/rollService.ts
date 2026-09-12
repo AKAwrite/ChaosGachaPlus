@@ -3,42 +3,43 @@ import {
   resolvePool,
   rollGacha,
   type ConcreteGachaCategory,
+  type CustomizationInput,
   type PoolEntry,
   type RollResult,
 } from "@chaosgachaplus/shared";
 import type { DedupeMode, PrismaClient, Ticket } from "../../generated/client/index.js";
 import { getOfficialEntries } from "../lib/entryCache.js";
 
+export interface RollContext {
+  storyId: string;
+  /** Every customization in scope; filtered per category while resolving. */
+  customizations: CustomizationInput[];
+  /** Entry ids the dedupe scope already holds (empty when dedupe is off). */
+  ownedIds: Set<string>;
+}
+
 /**
- * Resolves the eligible pool for a ticket's category (picking a random
- * concrete category for "random" tickets) and rolls once - or twice, for an
- * advantage ticket, as two independent options the caller lets the user
- * choose between.
+ * Loads everything a batch of rolls needs in one go. Rolling used to query per
+ * ticket, so a five-ticket batch paid ten round trips; now it pays two
+ * regardless of batch size.
  */
-export async function rollForTicket(
+export async function loadRollContext(
   prisma: PrismaClient,
   userId: string,
   storyId: string,
-  ticket: Ticket,
-  dedupeMode: DedupeMode = "off",
-) {
-  const category: ConcreteGachaCategory =
-    ticket.category === "random"
-      ? CONCRETE_GACHA_CATEGORIES[Math.floor(Math.random() * CONCRETE_GACHA_CATEGORIES.length)]
-      : ticket.category;
-
-  const [officialEntries, customizations, alreadyOwned] = await Promise.all([
-    getOfficialEntries(prisma, category),
+  characterId: string,
+  dedupeMode: DedupeMode,
+): Promise<RollContext> {
+  const [customizations, ownedIds] = await Promise.all([
     prisma.gachaEntryCustomization.findMany({
-      where: { userId, category, OR: [{ storyId: null }, { storyId }] },
+      where: { userId, OR: [{ storyId: null }, { storyId }] },
     }),
-    findOwnedEntryIds(prisma, storyId, ticket.characterId, dedupeMode),
+    findOwnedEntryIds(prisma, storyId, characterId, dedupeMode),
   ]);
 
-  const basePool = resolvePool({
-    category,
+  return {
     storyId,
-    officialEntries,
+    ownedIds,
     customizations: customizations.map((c) => ({
       id: c.id,
       storyId: c.storyId,
@@ -49,14 +50,36 @@ export async function rollForTicket(
       description: c.description,
       isExcluded: c.isExcluded,
     })),
+  };
+}
+
+/**
+ * Resolves the eligible pool for a ticket's category (picking a random
+ * concrete category for "random" tickets) and rolls once - or twice, for an
+ * advantage ticket, as two independent options the caller lets the user
+ * choose between.
+ */
+export async function rollForTicket(prisma: PrismaClient, context: RollContext, ticket: Ticket) {
+  const category: ConcreteGachaCategory =
+    ticket.category === "random"
+      ? CONCRETE_GACHA_CATEGORIES[Math.floor(Math.random() * CONCRETE_GACHA_CATEGORIES.length)]
+      : ticket.category;
+
+  const basePool = resolvePool({
+    category,
+    storyId: context.storyId,
+    officialEntries: await getOfficialEntries(prisma, category),
+    customizations: context.customizations,
   });
 
   // Drop anything already held in the configured scope. Consumed entries are
   // deliberately *not* in this set - once something is spent it can come back.
   const pool =
-    alreadyOwned.size === 0
+    context.ownedIds.size === 0
       ? basePool
-      : basePool.filter((entry) => !alreadyOwned.has(entry.gachaEntryId ?? entry.customizationId ?? entry.id));
+      : basePool.filter(
+          (entry) => !context.ownedIds.has(entry.gachaEntryId ?? entry.customizationId ?? entry.id),
+        );
 
   const rollCount = ticket.isAdvantage ? 2 : 1;
   const min = Number(ticket.minRarity);
@@ -64,14 +87,7 @@ export async function rollForTicket(
 
   const results: RollResult[] = [];
   for (let i = 0; i < rollCount; i++) {
-    results.push(
-      rollGacha({
-        entries: pool,
-        min,
-        avg: Number(ticket.avgRarity),
-        max,
-      }),
-    );
+    results.push({ ...rollGacha({ entries: pool, min, avg: Number(ticket.avgRarity), max }) });
   }
 
   return { results, decoys: sampleDecoys(pool, min, max) };

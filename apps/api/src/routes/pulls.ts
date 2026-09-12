@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth, getAuthUserId } from "../middleware/requireAuth.js";
 import { findOwnedCharacter } from "../lib/ownership.js";
 import { logHistoryEvent } from "../lib/historyLog.js";
-import { rollForTicket } from "../services/rollService.js";
+import { loadRollContext, rollForTicket } from "../services/rollService.js";
 import type { Pull, PullProposal } from "../../generated/client/index.js";
 
 const proposeSchema = z.object({
@@ -75,14 +75,23 @@ export async function pullRoutes(app: FastifyInstance) {
         return reply.code(409).send({ error: "One or more tickets have already been used", ticketIds: alreadyUsed.map((t) => t.id) });
       }
 
-      await app.prisma.pullProposal.deleteMany({ where: { ticketId: { in: ticketIds } } });
+      // Clear any previous reroll and load the pool context concurrently, then
+      // roll everything and persist the proposals in a single write.
+      const [, context] = await Promise.all([
+        app.prisma.pullProposal.deleteMany({ where: { ticketId: { in: ticketIds } } }),
+        loadRollContext(
+          app.prisma,
+          userId,
+          request.params.storyId,
+          character.id,
+          character.story.dedupeMode,
+        ),
+      ]);
 
-      // Roll everything first, then persist every proposal in one round trip -
-      // the database may be a long way from this process.
       const rolled = await Promise.all(
         tickets.map(async (ticket) => ({
           ticket,
-          ...(await rollForTicket(app.prisma, userId, request.params.storyId, ticket, character.story.dedupeMode)),
+          ...(await rollForTicket(app.prisma, context, ticket)),
         })),
       );
 
@@ -134,9 +143,10 @@ export async function pullRoutes(app: FastifyInstance) {
 
       const { selections } = parsed.data;
       const ticketIds = selections.map((s) => s.ticketId);
-      const tickets = await app.prisma.ticket.findMany({
-        where: { id: { in: ticketIds }, characterId: character.id },
-      });
+      const [tickets, proposals] = await Promise.all([
+        app.prisma.ticket.findMany({ where: { id: { in: ticketIds }, characterId: character.id } }),
+        app.prisma.pullProposal.findMany({ where: { ticketId: { in: ticketIds } } }),
+      ]);
       if (tickets.length !== ticketIds.length) {
         return reply.code(404).send({ error: "One or more tickets were not found" });
       }
@@ -145,7 +155,6 @@ export async function pullRoutes(app: FastifyInstance) {
         return reply.code(409).send({ error: "One or more tickets have already been used", ticketIds: alreadyUsed.map((t) => t.id) });
       }
 
-      const proposals = await app.prisma.pullProposal.findMany({ where: { ticketId: { in: ticketIds } } });
       const proposalByKey = new Map(proposals.map((p) => [`${p.ticketId}:${p.optionIndex}`, p]));
       for (const selection of selections) {
         if (!proposalByKey.has(`${selection.ticketId}:${selection.optionIndex}`)) {
@@ -153,59 +162,69 @@ export async function pullRoutes(app: FastifyInstance) {
         }
       }
 
+      // Batched rather than per-ticket: every statement here is a round trip to
+      // a database that may be a continent away, so a five-ticket confirm used
+      // to cost ~25 of them. This is a fixed handful regardless of batch size.
       const pulls = await app.prisma.$transaction(async (tx) => {
-        const created: Pull[] = [];
-        for (const selection of selections) {
-          const proposal = proposalByKey.get(`${selection.ticketId}:${selection.optionIndex}`)!;
+        const chosen = selections.map((selection) => ({
+          selection,
+          proposal: proposalByKey.get(`${selection.ticketId}:${selection.optionIndex}`)!,
+        }));
 
-          const pull = await tx.pull.create({
-            data: {
-              ticketId: selection.ticketId,
-              chosenOptionIndex: selection.optionIndex,
-              gachaEntryId: proposal.gachaEntryId,
-              customizationId: proposal.customizationId,
-              category: proposal.resolvedCategory,
-              name: proposal.resolvedName,
-              rarity: proposal.resolvedRarity,
-              description: proposal.resolvedDescription,
-              tier: proposal.tier,
-              luckPercent: proposal.luckPercent,
-            },
-          });
-          created.push(pull);
-
-          await tx.ticket.update({ where: { id: selection.ticketId }, data: { usedAt: new Date() } });
-          await tx.pullProposal.deleteMany({ where: { ticketId: selection.ticketId } });
-
-          await logHistoryEvent(tx, {
-            characterId: character.id,
-            storyId: request.params.storyId,
-            type: "PULL_RESULT",
-            summary: `Rolled ${proposal.resolvedName} (${proposal.tier}, ${proposal.resolvedCategory})`,
+        const created = await tx.pull.createManyAndReturn({
+          data: chosen.map(({ selection, proposal }) => ({
             ticketId: selection.ticketId,
-            pullId: pull.id,
-          });
+            chosenOptionIndex: selection.optionIndex,
+            gachaEntryId: proposal.gachaEntryId,
+            customizationId: proposal.customizationId,
+            category: proposal.resolvedCategory,
+            name: proposal.resolvedName,
+            rarity: proposal.resolvedRarity,
+            description: proposal.resolvedDescription,
+            tier: proposal.tier,
+            luckPercent: proposal.luckPercent,
+          })),
+        });
 
-          if (proposal.resolvedCategory === "item") {
-            const item = await tx.inventoryItem.create({
-              data: {
+        await Promise.all([
+          tx.ticket.updateMany({ where: { id: { in: ticketIds } }, data: { usedAt: new Date() } }),
+          tx.pullProposal.deleteMany({ where: { ticketId: { in: ticketIds } } }),
+        ]);
+
+        const itemPulls = created.filter((pull) => pull.category === "item");
+        const items = itemPulls.length
+          ? await tx.inventoryItem.createManyAndReturn({
+              data: itemPulls.map((pull) => ({
                 characterId: character.id,
                 sourcePullId: pull.id,
-                name: proposal.resolvedName,
-                description: proposal.resolvedDescription,
-                rarity: proposal.resolvedRarity,
-              },
-            });
-            await logHistoryEvent(tx, {
+                name: pull.name,
+                description: pull.description,
+                rarity: pull.rarity,
+              })),
+            })
+          : [];
+
+        await tx.historyEvent.createMany({
+          data: [
+            ...created.map((pull) => ({
               characterId: character.id,
               storyId: request.params.storyId,
-              type: "ITEM_RECEIVED",
-              summary: `Received item: ${proposal.resolvedName}`,
+              type: "PULL_RESULT" as const,
+              summary: `Rolled ${pull.name} (${pull.tier}, ${pull.category})`,
+              ticketId: pull.ticketId,
               pullId: pull.id,
+            })),
+            ...items.map((item) => ({
+              characterId: character.id,
+              storyId: request.params.storyId,
+              type: "ITEM_RECEIVED" as const,
+              summary: `Received item: ${item.name}`,
+              pullId: item.sourcePullId,
               itemId: item.id,
-            });
-          }
-        }
+            })),
+          ],
+        });
+
         return created;
       });
 

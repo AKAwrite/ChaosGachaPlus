@@ -4,6 +4,7 @@ import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import { env } from "./lib/env.js";
 import { prismaPlugin } from "./plugins/prisma.js";
+import { warmEntryCache } from "./lib/entryCache.js";
 import { authRoutes } from "./routes/auth.js";
 import { storyRoutes } from "./routes/stories.js";
 import { characterRoutes } from "./routes/characters.js";
@@ -43,6 +44,11 @@ await app.register(historyRoutes);
 
 app
   .listen({ port: env.PORT, host: "0.0.0.0" })
+  .then(() => {
+    // Deliberately not awaited: serving starts immediately and the pool warms
+    // up behind it, so the first roll doesn't pay for the cold cache.
+    warmEntryCache(app.prisma, (error) => app.log.warn({ error }, "entry cache warm-up failed"));
+  })
   .catch((error) => {
     app.log.error(error);
     process.exit(1);

@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
+import rateLimit from "@fastify/rate-limit";
 import { env } from "./lib/env.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { warmEntryCache } from "./lib/entryCache.js";
@@ -14,7 +15,22 @@ import { inventoryRoutes } from "./routes/inventory.js";
 import { entryRoutes } from "./routes/entries.js";
 import { historyRoutes } from "./routes/history.js";
 
-const app = Fastify({ logger: true });
+// trustProxy matters for rate limiting: the service sits behind a proxy, so
+// without it every request looks like it comes from the same address and one
+// visitor could exhaust the limit for everyone.
+const app = Fastify({ logger: true, trustProxy: true });
+
+await app.register(rateLimit, {
+  global: true,
+  max: 300,
+  timeWindow: "1 minute",
+  // statusCode has to be in the body for Fastify to answer 429 rather than 500,
+  // and `error` keeps the shape every other endpoint returns.
+  errorResponseBuilder: (_request, context) => ({
+    statusCode: 429,
+    error: `Too many requests. Try again in ${Math.ceil((context.ttl ?? 60_000) / 1000)} seconds.`,
+  }),
+});
 
 await app.register(cors, {
   origin: env.WEB_ORIGIN,

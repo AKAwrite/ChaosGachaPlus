@@ -18,8 +18,14 @@ const COOKIE_MAX_AGE_SECONDS = 14 * 24 * 60 * 60;
 // hence tying this to COOKIE_SECURE rather than NODE_ENV directly).
 const COOKIE_SAME_SITE = env.COOKIE_SECURE ? "none" : "lax";
 
+// Tighter than the global limit: these are the two endpoints worth brute
+// forcing, and a real person hits them a handful of times at most.
+const authRateLimit = {
+  config: { rateLimit: { max: 20, timeWindow: "10 minutes" } },
+};
+
 export async function authRoutes(app: FastifyInstance) {
-  app.post("/auth/register", async (request, reply) => {
+  app.post("/auth/register", authRateLimit, async (request, reply) => {
     const parsed = credentialsSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.flatten() });
@@ -49,7 +55,7 @@ export async function authRoutes(app: FastifyInstance) {
       .send({ id: user.id, email: user.email });
   });
 
-  app.post("/auth/login", async (request, reply) => {
+  app.post("/auth/login", authRateLimit, async (request, reply) => {
     const parsed = credentialsSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.flatten() });

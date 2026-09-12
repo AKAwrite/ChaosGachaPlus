@@ -11,10 +11,36 @@
       href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>ChaosGachaPlus</title>
+    <title>ChaosGachaPlus - Chaos Gacha for writers, in your browser</title>
+    <meta
+      name="description"
+      content="A web-based expansion of Bronzdeck's Chaos Gacha: roll 3,625 handwritten abilities, items, familiars, traits and skills, then keep them on character sheets with tickets, rerolls, inventories and history. Free and open source."
+    />
+    <link rel="canonical" href="https://chaosgachaplus.vercel.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ChaosGachaPlus" />
+    <meta property="og:title" content="ChaosGachaPlus - Chaos Gacha for writers, in your browser" />
+    <meta
+      property="og:description"
+      content="Roll the chaos of the multiverse into your story. An open-source expansion of Bronzdeck's Chaos Gacha with stories, characters, tickets, rerolls and inventories."
+    />
+    <meta property="og:url" content="https://chaosgachaplus.vercel.app/" />
+    <meta name="twitter:card" content="summary" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Crawlers that don't run JavaScript still get the gist and the credit. -->
+    <div id="root">
+      <noscript>
+        <h1>ChaosGachaPlus</h1>
+        <p>
+          A web-based expansion of
+          <a href="https://github.com/Bronzdeck/ChaosGacha">Chaos Gacha</a> by Bronzdeck: a weighted
+          random-rarity gacha for writers, covering abilities, items, familiars, traits and skills.
+        </p>
+        <p><a href="https://github.com/AKAwrite/ChaosGachaPlus">Source on GitHub</a></p>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -26,9 +26,15 @@ async function seedCategory(category: EntryCategory, filename: string) {
     console.warn(`[${category}] line ${warning.lineNumber}: ${warning.reason} -> ${JSON.stringify(warning.line)}`);
   }
 
-  for (const entry of entries) {
+  // The "N." numbering inside the source .txt files is Bronzdeck's own
+  // decorative numbering, not a stable unique id - some files reuse a number
+  // after a mid-list insertion (e.g. item.txt has 21 duplicated numbers).
+  // We use the entry's position in file-parse order as our sourceIndex
+  // instead, which is always unique and preserves the file's ordering.
+  for (const [position, entry] of entries.entries()) {
+    const sourceIndex = position + 1;
     await prisma.gachaEntry.upsert({
-      where: { category_sourceIndex: { category, sourceIndex: entry.sourceIndex } },
+      where: { category_sourceIndex: { category, sourceIndex } },
       update: {
         name: entry.name,
         rarity: entry.rarity,
@@ -39,7 +45,7 @@ async function seedCategory(category: EntryCategory, filename: string) {
       },
       create: {
         category,
-        sourceIndex: entry.sourceIndex,
+        sourceIndex,
         name: entry.name,
         rarity: entry.rarity,
         description: entry.description,

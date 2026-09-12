@@ -1,7 +1,6 @@
 import { tierForRarity } from "./tiers.js";
 import type { PoolEntry, RandomSource, RollResult } from "./types.js";
 
-const RARITY_STEP = 0.1;
 const PROXIMITY_TOLERANCE = 0.2;
 const DEFAULT_EXPONENT = 4;
 const MAX_TARGET_RESAMPLES = 200;

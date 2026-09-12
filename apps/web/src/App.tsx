@@ -4,6 +4,8 @@ import { ProtectedRoute } from "./components/common/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { StoriesPage } from "./pages/StoriesPage";
+import { StoryDetailPage } from "./pages/StoryDetailPage";
+import { CharacterDetailPage } from "./pages/CharacterDetailPage";
 
 export function App() {
   return (
@@ -17,6 +19,22 @@ export function App() {
           element={
             <ProtectedRoute>
               <StoriesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stories/:storyId"
+          element={
+            <ProtectedRoute>
+              <StoryDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stories/:storyId/characters/:characterId"
+          element={
+            <ProtectedRoute>
+              <CharacterDetailPage />
             </ProtectedRoute>
           }
         />

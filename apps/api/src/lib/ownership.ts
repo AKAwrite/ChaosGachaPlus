@@ -1,0 +1,16 @@
+import type { PrismaClient } from "../../generated/client/index.js";
+
+export async function findOwnedStory(prisma: PrismaClient, userId: string, storyId: string) {
+  return prisma.story.findFirst({ where: { id: storyId, userId } });
+}
+
+export async function findOwnedCharacter(
+  prisma: PrismaClient,
+  userId: string,
+  storyId: string,
+  characterId: string,
+) {
+  return prisma.character.findFirst({
+    where: { id: characterId, storyId, story: { userId } },
+  });
+}

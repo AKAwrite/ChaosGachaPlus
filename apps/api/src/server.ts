@@ -5,6 +5,9 @@ import jwt from "@fastify/jwt";
 import { env } from "./lib/env.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { authRoutes } from "./routes/auth.js";
+import { storyRoutes } from "./routes/stories.js";
+import { characterRoutes } from "./routes/characters.js";
+import { ticketRoutes } from "./routes/tickets.js";
 
 const app = Fastify({ logger: true });
 
@@ -26,6 +29,9 @@ await app.register(prismaPlugin);
 app.get("/health", async () => ({ status: "ok" }));
 
 await app.register(authRoutes);
+await app.register(storyRoutes);
+await app.register(characterRoutes);
+await app.register(ticketRoutes);
 
 app
   .listen({ port: env.PORT, host: "0.0.0.0" })
